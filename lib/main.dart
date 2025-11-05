@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'utils/download.dart'; //para baixar .txt (web)
 
 void main() {
   runApp(const MyApp());
@@ -10,15 +13,22 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'InsuGuia (Protótipo Didático)',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF7C3AED)),
-      ),
-      home: const HomePage(),
-    );
+return MaterialApp(
+  debugShowCheckedModeBanner: false,
+  title: 'InsuGuia (Protótipo Didático)',
+  theme: ThemeData(
+    useMaterial3: true,
+    colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF7C3AED)),
+  ),
+  // Aumenta levemente a tipografia sem tocar no TextTheme (evita o assert)
+  builder: (context, child) => MediaQuery(
+    data: MediaQuery.of(context).copyWith(
+      textScaler: const TextScaler.linear(1.02),
+    ),
+    child: child!,
+  ),
+  home: const HomePage(),
+);
   }
 }
 
@@ -27,6 +37,8 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(title: const Text('InsuGuia — Protótipo Didático')),
       body: Center(
@@ -37,6 +49,30 @@ class HomePage extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                  color: cs.secondaryContainer.withAlpha((0.35 * 255).round()),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: const [
+                      Icon(Icons.info_outline),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '⚠️ Uso didático. Não é um dispositivo médico. '
+                          'Não utilizar para decisões clínicas.',
+                          style: TextStyle(fontStyle: FontStyle.italic),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
                 Card(
                   elevation: 1,
                   child: Padding(
@@ -44,16 +80,14 @@ class HomePage extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: const [
-                        Text('InsuGuia Mobile',
-                            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
-                        SizedBox(height: 8),
                         Text(
-                          'Protótipo acadêmico (Flutter) para simular uma sugestão inicial de manejo de glicemia em paciente NÃO CRÍTICO.',
+                          'InsuGuia Mobile',
+                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
                         ),
                         SizedBox(height: 8),
                         Text(
-                          '⚠️ Uso didático. Não é um dispositivo médico. Não utilizar para decisões clínicas.',
-                          style: TextStyle(fontStyle: FontStyle.italic),
+                          'Protótipo acadêmico (Flutter) para simular uma sugestão inicial de '
+                          'manejo de glicemia em paciente NÃO CRÍTICO.',
                         ),
                       ],
                     ),
@@ -74,7 +108,7 @@ class HomePage extends StatelessWidget {
                   onPressed: () => showAboutDialog(
                     context: context,
                     applicationName: 'InsuGuia (Protótipo Didático)',
-                    applicationVersion: 'Entrega 1 — 15/10/2025',
+                    applicationVersion: 'Entrega 2 — 05/11/2025',
                     children: const [
                       Text('Projeto de Extensão — Desenvolvimento para Plataformas Móveis.'),
                       Text('Este app é apenas uma prova de conceito para fins educacionais.'),
@@ -104,10 +138,28 @@ class _PatientFormPageState extends State<PatientFormPage> {
   String _cenario = 'Não crítico';
 
   @override
+  void initState() {
+    super.initState();
+    _carregarRascunho(); // <- persistência leve (rascunho)
+  }
+
+  @override
   void dispose() {
     _nomeCtrl.dispose();
     _pesoCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _carregarRascunho() async {
+    final sp = await SharedPreferences.getInstance();
+    _nomeCtrl.text = sp.getString('draft_nome') ?? '';
+    _pesoCtrl.text = sp.getString('draft_peso') ?? '';
+  }
+
+  Future<void> _salvarRascunho() async {
+    final sp = await SharedPreferences.getInstance();
+    await sp.setString('draft_nome', _nomeCtrl.text);
+    await sp.setString('draft_peso', _pesoCtrl.text);
   }
 
   void _gerarSugestao() {
@@ -147,6 +199,7 @@ class _PatientFormPageState extends State<PatientFormPage> {
                   TextFormField(
                     controller: _nomeCtrl,
                     textInputAction: TextInputAction.next,
+                    onChanged: (_) => _salvarRascunho(),
                     decoration: const InputDecoration(
                       labelText: 'Nome (fictício)',
                       border: OutlineInputBorder(),
@@ -157,19 +210,27 @@ class _PatientFormPageState extends State<PatientFormPage> {
                   TextFormField(
                     controller: _pesoCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    // Máscara simples: permite dígitos, vírgula e ponto
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(RegExp(r'[0-9,\.]')),
+                    ],
+                    onChanged: (_) => _salvarRascunho(),
                     decoration: const InputDecoration(
                       labelText: 'Peso (kg)',
+                      helperText: 'Ex.: 72,5',
                       border: OutlineInputBorder(),
                     ),
                     validator: (v) {
                       final vv = double.tryParse((v ?? '').replaceAll(',', '.'));
-                      if (vv == null || vv <= 0) return 'Informe um peso válido';
+                      if (vv == null || vv <= 0 || vv > 400) {
+                        return 'Informe um peso entre 1 e 400 kg';
+                      }
                       return null;
                     },
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    initialValue: _cenario, // evita o aviso deprecado do 'value'
+                    initialValue: _cenario,
                     items: const [
                       DropdownMenuItem(value: 'Não crítico', child: Text('Não crítico')),
                     ],
@@ -239,52 +300,76 @@ class SuggestionPage extends StatelessWidget {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  void _baixarTxt() {
     final texto = _textoSugestao();
-    return Scaffold(
-      appBar: AppBar(title: const Text('Sugestão (Simulado)')),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 680),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Card(
-                  elevation: 1,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+    downloadTxt(texto, 'sugestao_${args.nome}.txt');
+  }
+
+@override
+Widget build(BuildContext context) {
+  final texto = _textoSugestao();
+  final cs = Theme.of(context).colorScheme;
+
+  return Scaffold(
+    appBar: AppBar(title: const Text('Sugestão (Simulado)')),
+    body: Center(
+      child: SingleChildScrollView(           
+        padding: const EdgeInsets.all(16.0),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 680),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Card(
+                elevation: 1,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Semantics(
+                    label: 'Texto com a sugestão simulada',
                     child: Text(texto),
                   ),
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    FilledButton.icon(
-                      icon: const Icon(Icons.copy_all),
-                      label: const Text('Copiar sugestão'),
-                      onPressed: () => _copiar(context),
-                    ),
-                    const SizedBox(width: 8),
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.arrow_back),
-                      label: const Text('Voltar'),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  FilledButton.icon(
+                    icon: const Icon(Icons.copy_all),
+                    label: const Text('Copiar sugestão'),
+                    onPressed: () => _copiar(context),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    icon: const Icon(Icons.download),
+                    label: const Text('Baixar .txt'),
+                    onPressed: _baixarTxt,
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.arrow_back),
+                    label: const Text('Voltar'),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: cs.secondaryContainer.withAlpha((0.35 * 255).round()),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(height: 8),
-                const Text(
+                child: const Text(
                   'Este é um protótipo educacional. Não possui validade clínica.',
                   style: TextStyle(fontStyle: FontStyle.italic),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
