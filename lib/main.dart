@@ -1,10 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'firebase_options.dart';
 import 'utils/download.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const MyApp());
 }
 
@@ -38,10 +47,18 @@ class MyApp extends StatelessWidget {
               const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         ),
         cardTheme: CardThemeData(
-          elevation: 0,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           color: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Color(0xFFE0E0E0)),
+          ),
+        ),
+        appBarTheme: AppBarTheme(
+          elevation: 0,
+          centerTitle: true,
+          backgroundColor: Colors.grey.shade50,
+          foregroundColor: Colors.black87,
         ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
@@ -59,13 +76,6 @@ class MyApp extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14)),
           ),
         ),
-        appBarTheme: const AppBarTheme(elevation: 0),
-      ),
-      builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(context).copyWith(
-          textScaler: const TextScaler.linear(1.02),
-        ),
-        child: child!,
       ),
       home: const HomePage(),
     );
@@ -83,29 +93,48 @@ class SlideIn extends StatefulWidget {
 
 class _SlideInState extends State<SlideIn>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-      duration: const Duration(milliseconds: 550), vsync: this);
-  late final Animation<Offset> _slide =
-      Tween(begin: const Offset(0, .15), end: Offset.zero).animate(
-          CurvedAnimation(parent: _c, curve: Curves.easeOutCubic));
+  late final AnimationController _controller;
+  late final Animation<Offset> _offset;
 
   @override
   void initState() {
     super.initState();
-    Future.delayed(widget.delay, _c.forward);
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 380),
+      vsync: this,
+    );
+    _offset = Tween<Offset>(
+      begin: const Offset(0, 0.08),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic),
+    );
+
+    if (widget.delay == Duration.zero) {
+      _controller.forward();
+    } else {
+      Future.delayed(widget.delay, () {
+        if (mounted) _controller.forward();
+      });
+    }
   }
 
   @override
   void dispose() {
-    _c.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => SlideTransition(
-        position: _slide,
-        child: FadeTransition(opacity: _c, child: widget.child),
-      );
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _controller,
+      child: SlideTransition(
+        position: _offset,
+        child: widget.child,
+      ),
+    );
+  }
 }
 
 class GradientButton extends StatelessWidget {
@@ -129,18 +158,28 @@ class GradientButton extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [cs.primary, cs.primaryContainer],
+            colors: [
+              cs.primary,
+              cs.primary.withOpacity(0.85),
+            ],
           ),
-          borderRadius: BorderRadius.circular(999), // pílula
+          borderRadius: BorderRadius.circular(40),
+          boxShadow: [
+            BoxShadow(
+              color: cs.primary.withOpacity(0.2),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: ElevatedButton.icon(
           onPressed: onPressed,
           style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
             backgroundColor: Colors.transparent,
-            shadowColor: Colors.black.withOpacity(0.15),
+            shadowColor: Colors.transparent,
             elevation: 2,
             shape: const StadiumBorder(),
-            padding: const EdgeInsets.symmetric(horizontal: 24),
           ),
           icon: Icon(icon, size: 18, color: Colors.white),
           label: Text(
@@ -158,6 +197,7 @@ class GradientButton extends StatelessWidget {
 }
 
 class Patient {
+  final String id;
   final String nome;
   final String sexo;
   final int idade;
@@ -168,6 +208,7 @@ class Patient {
   final String cenario;
 
   const Patient({
+    this.id = '',
     required this.nome,
     required this.sexo,
     required this.idade,
@@ -177,18 +218,132 @@ class Patient {
     required this.local,
     required this.cenario,
   });
+
+  Patient copyWith({
+    String? id,
+    String? nome,
+    String? sexo,
+    int? idade,
+    double? pesoKg,
+    double? alturaCm,
+    double? creatinina,
+    String? local,
+    String? cenario,
+  }) {
+    return Patient(
+      id: id ?? this.id,
+      nome: nome ?? this.nome,
+      sexo: sexo ?? this.sexo,
+      idade: idade ?? this.idade,
+      pesoKg: pesoKg ?? this.pesoKg,
+      alturaCm: alturaCm ?? this.alturaCm,
+      creatinina: creatinina ?? this.creatinina,
+      local: local ?? this.local,
+      cenario: cenario ?? this.cenario,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'nome': nome,
+      'sexo': sexo,
+      'idade': idade,
+      'pesoKg': pesoKg,
+      'alturaCm': alturaCm,
+      'creatinina': creatinina,
+      'local': local,
+      'cenario': cenario,
+      'createdAt': FieldValue.serverTimestamp(),
+    };
+  }
+
+  factory Patient.fromFirestore(
+      DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data() ?? {};
+    return Patient(
+      id: doc.id,
+      nome: (data['nome'] ?? '') as String,
+      sexo: (data['sexo'] ?? '') as String,
+      idade: (data['idade'] is int)
+          ? data['idade'] as int
+          : int.tryParse('${data['idade']}') ?? 0,
+      pesoKg: (data['pesoKg'] is num)
+          ? (data['pesoKg'] as num).toDouble()
+          : double.tryParse('${data['pesoKg']}') ?? 0,
+      alturaCm: (data['alturaCm'] is num)
+          ? (data['alturaCm'] as num).toDouble()
+          : double.tryParse('${data['alturaCm']}') ?? 0,
+      creatinina: (data['creatinina'] is num)
+          ? (data['creatinina'] as num).toDouble()
+          : double.tryParse('${data['creatinina']}') ?? 0,
+      local: (data['local'] ?? '') as String,
+      cenario: (data['cenario'] ?? '') as String,
+    );
+  }
 }
 
 class GlycemiaReading {
+  final String id;
   final String momento;
   final double valor;
   final DateTime ts;
 
   GlycemiaReading({
+    this.id = '',
     required this.momento,
     required this.valor,
     DateTime? ts,
   }) : ts = ts ?? DateTime.now();
+
+  Map<String, dynamic> toMap() {
+    return {
+      'momento': momento,
+      'valor': valor,
+      'ts': Timestamp.fromDate(ts),
+    };
+  }
+
+  factory GlycemiaReading.fromFirestore(
+      DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data() ?? {};
+    return GlycemiaReading(
+      id: doc.id,
+      momento: (data['momento'] ?? '') as String,
+      valor: (data['valor'] is num)
+          ? (data['valor'] as num).toDouble()
+          : double.tryParse('${data['valor']}') ?? 0,
+      ts: (data['ts'] is Timestamp)
+          ? (data['ts'] as Timestamp).toDate()
+          : DateTime.now(),
+    );
+  }
+}
+
+// Referências e helpers do Firebase/Firestore
+final CollectionReference<Map<String, dynamic>> pacientesRef =
+    FirebaseFirestore.instance.collection('pacientes');
+
+Future<String> createPatientInFirestore(Patient patient) async {
+  final docRef = await pacientesRef.add(patient.toMap());
+  return docRef.id;
+}
+
+Future<void> deletePatientWithFollowUps(String patientId) async {
+  final docRef = pacientesRef.doc(patientId);
+  final followUpsSnap =
+      await docRef.collection('acompanhamentos').get();
+
+  for (final d in followUpsSnap.docs) {
+    await d.reference.delete();
+  }
+
+  await docRef.delete();
+}
+
+Future<void> addFollowUpReading(
+    String patientId, GlycemiaReading reading) async {
+  final docRef = pacientesRef.doc(patientId);
+  await docRef.collection('acompanhamentos').add(reading.toMap());
 }
 
 //Home
@@ -256,11 +411,10 @@ class HomePage extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
 
-                //Aviso didático
+                // Aviso
                 SlideIn(
-                  delay: const Duration(milliseconds: 120),
+                  delay: const Duration(milliseconds: 140),
                   child: Container(
-                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: Colors.orange[50],
                       borderRadius: BorderRadius.circular(12),
@@ -314,8 +468,7 @@ class HomePage extends StatelessWidget {
                           child: SizedBox(
                             height: 46,
                             child: OutlinedButton.icon(
-                              icon: const Icon(
-                                  Icons.info_outline_rounded,
+                              icon: const Icon(Icons.info_outline_rounded,
                                   size: 18),
                               label: const Text('Sobre'),
                               onPressed: () => showAboutDialog(
@@ -329,18 +482,12 @@ class HomePage extends StatelessWidget {
                                 children: const [
                                   Text(
                                       'Este aplicativo é uma prova de conceito educacional.'),
+                                  Text(
+                                      'Não utilizar este protótipo para decisões clínicas reais.'),
                                 ],
                               ),
                               style: OutlinedButton.styleFrom(
                                 shape: const StadiumBorder(),
-                                side: BorderSide(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .outline
-                                      .withOpacity(0.5),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 24),
                               ),
                             ),
                           ),
@@ -420,7 +567,7 @@ class _PatientFormPageState extends State<PatientFormPage> {
     super.dispose();
   }
 
-  void _proceed() {
+  void _proceed() async {
     if (!_formKey.currentState!.validate()) return;
 
     final p = Patient(
@@ -436,9 +583,23 @@ class _PatientFormPageState extends State<PatientFormPage> {
       cenario: _cenario,
     );
 
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => SuggestionPage(patient: p)),
-    );
+    try {
+      final id = await createPatientInFirestore(p);
+      final patientWithId = p.copyWith(id: id);
+
+      if (!mounted) return;
+
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => SuggestionPage(patient: patientWithId),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao salvar paciente: $e')),
+      );
+    }
   }
 
   InputDecoration _dec(String label,
@@ -490,13 +651,9 @@ class _PatientFormPageState extends State<PatientFormPage> {
                               DropdownMenuItem(
                                   value: 'Feminino',
                                   child: Text('Feminino')),
-                              DropdownMenuItem(
-                                  value: 'Outro/Prefere não informar',
-                                  child: Text(
-                                      'Outro/Prefere não informar')),
                             ],
                             onChanged: (v) {
-                              setState(() => _sexo = v!);
+                              setState(() => _sexo = v ?? _sexo);
                               _saveDraft();
                             },
                             decoration: _dec('Sexo'),
@@ -537,16 +694,15 @@ class _PatientFormPageState extends State<PatientFormPage> {
                                     decimal: true),
                             inputFormatters: [
                               FilteringTextInputFormatter.allow(
-                                  RegExp(r'[0-9,\.]'))
+                                  RegExp(r'[0-9,\\.]'))
                             ],
-                            decoration: _dec('Peso',
-                                helper: 'Ex.: 72,5', suffix: 'kg'),
+                            decoration: _dec('Peso (kg)'),
                             onChanged: (_) => _saveDraft(),
                             validator: (v) {
                               final x = double.tryParse(
                                   (v ?? '').replaceAll(',', '.'));
-                              if (x == null || x <= 0 || x > 400) {
-                                return '1–400 kg';
+                              if (x == null || x < 20 || x > 250) {
+                                return '20–250 kg';
                               }
                               return null;
                             },
@@ -561,16 +717,15 @@ class _PatientFormPageState extends State<PatientFormPage> {
                                     decimal: true),
                             inputFormatters: [
                               FilteringTextInputFormatter.allow(
-                                  RegExp(r'[0-9,\.]'))
+                                  RegExp(r'[0-9,\\.]'))
                             ],
-                            decoration: _dec('Altura',
-                                helper: 'Ex.: 170', suffix: 'cm'),
+                            decoration: _dec('Altura (cm)'),
                             onChanged: (_) => _saveDraft(),
                             validator: (v) {
                               final x = double.tryParse(
                                   (v ?? '').replaceAll(',', '.'));
-                              if (x == null || x <= 0 || x > 250) {
-                                return '50–250 cm';
+                              if (x == null || x < 100 || x > 230) {
+                                return '100–230 cm';
                               }
                               return null;
                             },
@@ -581,7 +736,7 @@ class _PatientFormPageState extends State<PatientFormPage> {
                   ),
                   const SizedBox(height: 12),
                   SlideIn(
-                    delay: const Duration(milliseconds: 240),
+                    delay: const Duration(milliseconds: 260),
                     child: TextFormField(
                       controller: _creatCtrl,
                       keyboardType:
@@ -589,10 +744,10 @@ class _PatientFormPageState extends State<PatientFormPage> {
                               decimal: true),
                       inputFormatters: [
                         FilteringTextInputFormatter.allow(
-                            RegExp(r'[0-9,\.]'))
+                            RegExp(r'[0-9,\\.]'))
                       ],
                       decoration: _dec(
-                        'Creatinina',
+                        'Creatinina (mg/dL)',
                         helper:
                             'Usada apenas como dado exibido nesta versão',
                         suffix: 'mg/dL',
@@ -627,11 +782,10 @@ class _PatientFormPageState extends State<PatientFormPage> {
                                   child: Text('Ambulatório')),
                             ],
                             onChanged: (v) {
-                              setState(() => _local = v!);
+                              setState(() => _local = v ?? _local);
                               _saveDraft();
                             },
-                            decoration:
-                                _dec('Local de internação'),
+                            decoration: _dec('Local'),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -643,26 +797,29 @@ class _PatientFormPageState extends State<PatientFormPage> {
                                   value: 'Não crítico',
                                   child: Text('Não crítico')),
                               DropdownMenuItem(
-                                  value: 'Outro (sem cálculo)',
-                                  child: Text(
-                                      'Outro (sem cálculo)')),
+                                  value: 'Crítico', child: Text('Crítico')),
                             ],
                             onChanged: (v) {
-                              setState(() => _cenario = v!);
+                              setState(() => _cenario = v ?? _cenario);
                               _saveDraft();
                             },
-                            decoration:
-                                _dec('Classificação clínica'),
+                            decoration: _dec('Cenário'),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 18),
-                  FilledButton.icon(
-                    icon: const Icon(Icons.assignment_turned_in),
-                    label: const Text('Gerar sugestão (simulado)'),
-                    onPressed: _proceed,
+                  const SizedBox(height: 24),
+                  SlideIn(
+                    delay: const Duration(milliseconds: 360),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: FilledButton.icon(
+                        icon: const Icon(Icons.task_alt_rounded),
+                        label: const Text('Gerar sugestão (simulado)'),
+                        onPressed: _proceed,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 6),
                   const Text(
@@ -679,20 +836,20 @@ class _PatientFormPageState extends State<PatientFormPage> {
   }
 }
 
-// Sugestão para o paciente
+// Resultado
 class SuggestionPage extends StatelessWidget {
   final Patient patient;
   const SuggestionPage({super.key, required this.patient});
 
   String _buildSuggestion() {
     final b = StringBuffer();
-    b.writeln('InsuGuia — Sugestão (SIMULADO)\n');
+    b.writeln('InsuGuia — Sugestão (SIMULADO)\\n');
     b.writeln(
         'Paciente: ${patient.nome} | Sexo: ${patient.sexo} | Idade: ${patient.idade}');
     b.writeln(
         'Cenário: ${patient.cenario} | Peso: ${patient.pesoKg.toStringAsFixed(1)} kg | Altura: ${patient.alturaCm.toStringAsFixed(0)} cm');
     b.writeln(
-        'Creatinina: ${patient.creatinina.toStringAsFixed(2)} mg/dL | Local: ${patient.local}\n');
+        'Creatinina: ${patient.creatinina.toStringAsFixed(2)} mg/dL | Local: ${patient.local}\\n');
 
     double? basal;
     if (patient.cenario == 'Não crítico') {
@@ -707,117 +864,92 @@ class SuggestionPage extends StatelessWidget {
           '3) Basal: dose inicial sugerida (simulada): ${basal.toStringAsFixed(1)} UI SC à noite (0,2 UI/kg).');
     } else {
       b.writeln(
-          '3) Basal: não calculado para este cenário (simulado).');
+          '3) Basal: definir conforme protocolo específico e avaliação clínica (simulado).');
     }
     b.writeln(
-        '4) Insulina de ação rápida: correção conforme faixa (simulado).');
+        '4) Correções: considerar esquema de correção conforme protocolo local (simulado).');
     b.writeln(
-        '5) Hipoglicemia: seguir protocolo institucional (simulado).');
-    b.writeln(
-        '\n⚠️ Conteúdo didático. Não utilizar para decisões clínicas.');
+        '5) Reavaliar diariamente e ajustar conforme glicemias (simulado).');
+
     return b.toString();
-  }
-
-  void _copiar(BuildContext context) async {
-    await Clipboard.setData(ClipboardData(text: _buildSuggestion()));
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content:
-                Text('Texto copiado para a área de transferência.')),
-      );
-    }
-  }
-
-  void _baixarTxt() {
-    downloadTxt(_buildSuggestion(),
-        'sugestao_${patient.nome}.txt');
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final texto = _buildSuggestion();
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Sugestão (Simulado)')),
+      appBar: AppBar(title: const Text('Sugestão (simulada)')),
       body: Center(
-        child: SingleChildScrollView(
+        child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 760),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        cs.primary.withOpacity(0.06),
-                        cs.secondary.withOpacity(0.04)
-                      ],
+                SlideIn(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: cs.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: cs.outlineVariant),
                     ),
-                    borderRadius: BorderRadius.circular(20),
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      texto,
+                      style: const TextStyle(height: 1.4),
+                    ),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(texto),
+                ),
+                const SizedBox(height: 16),
+                SlideIn(
+                  delay: const Duration(milliseconds: 160),
+                  child: Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    children: [
+                      FilledButton.icon(
+                        icon: const Icon(Icons.download),
+                        label: const Text('Baixar .txt'),
+                        onPressed: () => downloadTxt(
+                          texto,                      // conteúdo do arquivo
+                          'sugestao_insuguia.txt',    // nome do arquivo
+                        ),
+                      ),
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.monitor_heart),
+                        label: const Text(
+                            'Acompanhamento diário (simulado)'),
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  FollowUpPage(patient: patient)),
+                        ),
+                      ),
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.local_hospital),
+                        label: const Text('Alta hospitalar (simulado)'),
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  DischargePage(patient: patient)),
+                        ),
+                      ),
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('Novo paciente'),
+                        onPressed: () => Navigator.of(context)
+                            .popUntil((route) => route.isFirst),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 12),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    FilledButton.icon(
-                      icon: const Icon(Icons.copy_all),
-                      label: const Text('Copiar sugestão'),
-                      onPressed: () => _copiar(context),
-                    ),
-                    FilledButton.icon(
-                      icon: const Icon(Icons.download),
-                      label: const Text('Baixar .txt'),
-                      onPressed: _baixarTxt,
-                    ),
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.monitor_heart),
-                      label:
-                          const Text('Acompanhamento diário (simulado)'),
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                            builder: (_) =>
-                                FollowUpPage(patient: patient)),
-                      ),
-                    ),
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.local_hospital),
-                      label:
-                          const Text('Alta hospitalar (simulado)'),
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                            builder: (_) =>
-                                DischargePage(patient: patient)),
-                      ),
-                    ),
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.arrow_back),
-                      label: const Text('Voltar'),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: cs.secondaryContainer.withOpacity(.35),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    'Este é um protótipo educacional. Não possui validade clínica.',
-                    style: TextStyle(fontStyle: FontStyle.italic),
-                  ),
+                const Text(
+                  '⚠️ Conteúdo apenas ilustrativo. Não substitui protocolos ou julgamento clínico.',
+                  style:
+                      TextStyle(fontStyle: FontStyle.italic, fontSize: 12),
                 ),
               ],
             ),
@@ -828,7 +960,6 @@ class SuggestionPage extends StatelessWidget {
   }
 }
 
-// Acompanhamento diário
 class FollowUpPage extends StatefulWidget {
   final Patient patient;
   const FollowUpPage({super.key, required this.patient});
@@ -841,20 +972,67 @@ class _FollowUpPageState extends State<FollowUpPage> {
   final _valorCtrl = TextEditingController();
   String _momento = 'AC Café';
   final List<GlycemiaReading> _leituras = [];
+  StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _subscription;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.patient.id.isNotEmpty) {
+      _subscription = pacientesRef
+          .doc(widget.patient.id)
+          .collection('acompanhamentos')
+          .orderBy('ts', descending: true)
+          .snapshots()
+          .listen((snapshot) {
+        setState(() {
+          _leituras
+            ..clear()
+            ..addAll(
+              snapshot.docs
+                  .map(
+                    (doc) => GlycemiaReading.fromFirestore(
+                        doc as DocumentSnapshot<Map<String, dynamic>>),
+                  )
+                  .toList(),
+            );
+        });
+      });
+    }
+  }
 
   @override
   void dispose() {
+    _subscription?.cancel();
     _valorCtrl.dispose();
     super.dispose();
   }
 
-  void _adicionar() {
+  void _adicionar() async {
     final v = double.tryParse(_valorCtrl.text.replaceAll(',', '.'));
     if (v == null || v <= 0) return;
-    setState(() {
-      _leituras.add(GlycemiaReading(momento: _momento, valor: v));
+
+    if (widget.patient.id.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content:
+              Text('Paciente sem ID, não é possível salvar acompanhamento.'),
+        ),
+      );
+      return;
+    }
+
+    final leitura = GlycemiaReading(momento: _momento, valor: v);
+
+    try {
+      await addFollowUpReading(widget.patient.id, leitura);
       _valorCtrl.clear();
-    });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao salvar leitura: $e')),
+      );
+    }
   }
 
   String _sugestaoAjuste() {
@@ -886,7 +1064,8 @@ class _FollowUpPageState extends State<FollowUpPage> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: const Text('Acompanhamento diário (simulado)')),
+      appBar:
+          AppBar(title: const Text('Acompanhamento diário (simulado)')),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -903,14 +1082,11 @@ class _FollowUpPageState extends State<FollowUpPage> {
                         DropdownMenuItem(
                             value: 'AC Café', child: Text('AC Café')),
                         DropdownMenuItem(
-                            value: 'AC Almoço',
-                            child: Text('AC Almoço')),
+                            value: 'AC Almoço', child: Text('AC Almoço')),
                         DropdownMenuItem(
-                            value: 'AC Jantar',
-                            child: Text('AC Jantar')),
+                            value: 'AC Jantar', child: Text('AC Jantar')),
                         DropdownMenuItem(
-                            value: 'HS',
-                            child: Text('HS (ao deitar)')),
+                            value: 'HS', child: Text('HS (ao deitar)')),
                         DropdownMenuItem(
                             value: '03:00',
                             child: Text('03:00 (se necessário)')),
@@ -929,7 +1105,7 @@ class _FollowUpPageState extends State<FollowUpPage> {
                               decimal: true),
                       inputFormatters: [
                         FilteringTextInputFormatter.allow(
-                            RegExp(r'[0-9,\.]'))
+                            RegExp(r'[0-9,\\.]'))
                       ],
                       decoration: const InputDecoration(
                           labelText: 'Glicemia (mg/dL)'),
@@ -944,33 +1120,56 @@ class _FollowUpPageState extends State<FollowUpPage> {
                 ]),
                 const SizedBox(height: 16),
                 Expanded(
-                  child: Card(
-                    child: ListView.separated(
-                      itemCount: _leituras.length,
-                      separatorBuilder: (_, __) =>
-                          const Divider(height: 1),
-                      itemBuilder: (context, i) {
-                        final e = _leituras[i];
-                        return ListTile(
-                          leading: Icon(Icons.bloodtype_outlined,
-                              color: cs.primary),
-                          title: Text(
-                              '${e.momento} — ${e.valor.toStringAsFixed(0)} mg/dL'),
-                          subtitle: Text(
-                              '${e.ts.hour.toString().padLeft(2, '0')}:${e.ts.minute.toString().padLeft(2, '0')}'),
-                        );
-                      },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: cs.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: cs.outlineVariant),
                     ),
+                    child: _leituras.isEmpty
+                        ? const Center(
+                            child: Text('Sem leituras ainda.'),
+                          )
+                        : ListView.separated(
+                            itemCount: _leituras.length,
+                            separatorBuilder: (_, __) =>
+                                const Divider(height: 1),
+                            itemBuilder: (context, i) {
+                              final e = _leituras[i];
+                              return ListTile(
+                                leading: Icon(Icons.bloodtype_outlined,
+                                    color: cs.primary),
+                                title: Text(
+                                    '${e.momento} — ${e.valor.toStringAsFixed(0)} mg/dL'),
+                                subtitle: Text(
+                                    '${e.ts.hour.toString().padLeft(2, '0')}:${e.ts.minute.toString().padLeft(2, '0')}'),
+                              );
+                            },
+                          ),
                   ),
                 ),
                 const SizedBox(height: 12),
                 Container(
                   decoration: BoxDecoration(
-                    color: cs.secondaryContainer.withOpacity(.25),
+                    color: cs.secondaryContainer,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   padding: const EdgeInsets.all(12),
-                  child: Text(_sugestaoAjuste()),
+                  child: Row(
+                    children: [
+                      Icon(Icons.lightbulb_outline,
+                          color: cs.onSecondaryContainer),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _sugestaoAjuste(),
+                          style: TextStyle(
+                            color: cs.onSecondaryContainer,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -981,7 +1180,6 @@ class _FollowUpPageState extends State<FollowUpPage> {
   }
 }
 
-//Alta
 class DischargePage extends StatelessWidget {
   final Patient patient;
   const DischargePage({super.key, required this.patient});
@@ -990,13 +1188,13 @@ class DischargePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final orientacoes = [
-      'Orientações gerais — SIMULADO:\n',
-      '• Manter acompanhamento ambulatorial conforme equipe.\n',
-      '• Educar sobre sinais de hipoglicemia e condutas (15–15).\n',
-      '• Revisar técnica de aplicação e locais de aplicação.\n',
-      '• Plano de monitorização domiciliar (AC/HS) — simulado.\n',
-      '• Reforçar que este app é didático e não substitui conduta clínica.\n',
-    ].join('\n');
+      'Orientações gerais — SIMULADO:\\n',
+      '• Manter acompanhamento ambulatorial conforme equipe.\\n',
+      '• Educar sobre sinais de hipoglicemia e condutas (15–15).\\n',
+      '• Revisar técnica de aplicação e locais de aplicação.\\n',
+      '• Plano de monitorização domiciliar (AC/HS) — simulado.\\n',
+      '• Reforçar que este app é didático e não substitui conduta clínica.\\n',
+    ].join('\\n');
 
     return Scaffold(
       appBar: AppBar(title: const Text('Alta hospitalar (simulado)')),
@@ -1012,7 +1210,47 @@ class DischargePage extends StatelessWidget {
                 border: Border.all(color: cs.outlineVariant),
               ),
               padding: const EdgeInsets.all(16.0),
-              child: Text(orientacoes),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(orientacoes),
+                  const SizedBox(height: 24),
+                  FilledButton.icon(
+                    icon: const Icon(Icons.check),
+                    label:
+                        const Text('Concluir alta e remover paciente'),
+                    onPressed: patient.id.isEmpty
+                        ? null
+                        : () async {
+                            try {
+                              await deletePatientWithFollowUps(
+                                  patient.id);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context)
+                                    .showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        'Paciente removido com sucesso.'),
+                                  ),
+                                );
+                                Navigator.of(context).popUntil(
+                                    (route) => route.isFirst);
+                              }
+                            } catch (e) {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context)
+                                  .showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                      'Erro ao remover paciente: $e'),
+                                ),
+                              );
+                            }
+                          },
+                  ),
+                ],
+              ),
             ),
           ),
         ),
