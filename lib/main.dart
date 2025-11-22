@@ -13,7 +13,7 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = const Color(0xFF1565C0); 
+    final color = const Color(0xFF1565C0);
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'InsuGuia (Protótipo Didático)',
@@ -34,23 +34,29 @@ class MyApp extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide(color: color, width: 2),
           ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         ),
         cardTheme: CardThemeData(
           elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           color: Colors.white,
         ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14)),
           ),
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14)),
           ),
         ),
         appBarTheme: const AppBarTheme(elevation: 0),
@@ -70,15 +76,18 @@ class SlideIn extends StatefulWidget {
   final Widget child;
   final Duration delay;
   const SlideIn({super.key, required this.child, this.delay = Duration.zero});
+
   @override
   State<SlideIn> createState() => _SlideInState();
 }
 
-class _SlideInState extends State<SlideIn> with SingleTickerProviderStateMixin {
-  late final AnimationController _c =
-      AnimationController(duration: const Duration(milliseconds: 550), vsync: this);
-  late final Animation<Offset> _slide = Tween(begin: const Offset(0, .15), end: Offset.zero)
-      .animate(CurvedAnimation(parent: _c, curve: Curves.easeOutCubic));
+class _SlideInState extends State<SlideIn>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+      duration: const Duration(milliseconds: 550), vsync: this);
+  late final Animation<Offset> _slide =
+      Tween(begin: const Offset(0, .15), end: Offset.zero).animate(
+          CurvedAnimation(parent: _c, curve: Curves.easeOutCubic));
 
   @override
   void initState() {
@@ -93,38 +102,56 @@ class _SlideInState extends State<SlideIn> with SingleTickerProviderStateMixin {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      SlideTransition(position: _slide, child: FadeTransition(opacity: _c, child: widget.child));
+  Widget build(BuildContext context) => SlideTransition(
+        position: _slide,
+        child: FadeTransition(opacity: _c, child: widget.child),
+      );
 }
 
 class GradientButton extends StatelessWidget {
   final VoidCallback onPressed;
   final String text;
   final IconData icon;
-  const GradientButton({super.key, required this.onPressed, required this.text, required this.icon});
+
+  const GradientButton({
+    super.key,
+    required this.onPressed,
+    required this.text,
+    required this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [cs.primary, cs.primaryContainer]),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          minimumSize: const Size(220, 56),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+
+    return SizedBox(
+      height: 46,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [cs.primary, cs.primaryContainer],
+          ),
+          borderRadius: BorderRadius.circular(999), // pílula
         ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, color: Colors.white),
-          const SizedBox(width: 8),
-          Text(text,
-              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
-        ]),
+        child: ElevatedButton.icon(
+          onPressed: onPressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            shadowColor: Colors.black.withOpacity(0.15),
+            elevation: 2,
+            shape: const StadiumBorder(),
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+          ),
+          icon: Icon(icon, size: 18, color: Colors.white),
+          label: Text(
+            text,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -132,13 +159,13 @@ class GradientButton extends StatelessWidget {
 
 class Patient {
   final String nome;
-  final String sexo; // 'Masculino', 'Feminino', 'Outro/Prefere não informar'
-  final int idade; // anos
+  final String sexo;
+  final int idade;
   final double pesoKg;
   final double alturaCm;
-  final double creatinina; // mg/dL (apenas exibida nesta versão)
-  final String local; // Enfermaria, UTI, Ambulatório
-  final String cenario; // Não crítico (com cálculo) | Outros (sem cálculo)
+  final double creatinina;
+  final String local;
+  final String cenario;
 
   const Patient({
     required this.nome,
@@ -153,7 +180,7 @@ class Patient {
 }
 
 class GlycemiaReading {
-  final String momento; // AC Café, AC Almoço, AC Jantar, HS, 03:00
+  final String momento;
   final double valor;
   final DateTime ts;
 
@@ -164,7 +191,7 @@ class GlycemiaReading {
   }) : ts = ts ?? DateTime.now();
 }
 
-// ==================== HOME ====================
+//Home
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
@@ -182,14 +209,17 @@ class HomePage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Header com ícone + gradient
+                // Header
                 SlideIn(
                   child: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [cs.primary.withOpacity(0.08), cs.secondary.withOpacity(0.05)],
+                        colors: [
+                          cs.primary.withOpacity(0.08),
+                          cs.secondary.withOpacity(0.05)
+                        ],
                       ),
                       borderRadius: BorderRadius.circular(24),
                     ),
@@ -199,17 +229,24 @@ class HomePage extends StatelessWidget {
                         CircleAvatar(
                           radius: 28,
                           backgroundColor: cs.primaryContainer,
-                          child: Icon(Icons.medical_services, color: cs.onPrimaryContainer),
+                          child: Icon(Icons.medical_services,
+                              color: cs.onPrimaryContainer),
                         ),
                         const SizedBox(width: 14),
                         const Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('InsuGuia Mobile',
-                                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
+                              Text(
+                                'InsuGuia Mobile',
+                                style: TextStyle(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w800),
+                              ),
                               SizedBox(height: 6),
-                              Text('Protótipo acadêmico para manejo inicial em cenário NÃO CRÍTICO.'),
+                              Text(
+                                'Protótipo acadêmico para manejo inicial em cenário NÃO CRÍTICO.',
+                              ),
                             ],
                           ),
                         ),
@@ -219,7 +256,7 @@ class HomePage extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
 
-                // Aviso didático destacado
+                //Aviso didático
                 SlideIn(
                   delay: const Duration(milliseconds: 120),
                   child: Container(
@@ -231,12 +268,16 @@ class HomePage extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.warning_amber_rounded, color: Colors.orange[800]),
+                        Icon(Icons.warning_amber_rounded,
+                            color: Colors.orange[800]),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             'Uso exclusivamente didático. Não utilizar para decisões clínicas.',
-                            style: TextStyle(color: Colors.orange[800], fontStyle: FontStyle.italic),
+                            style: TextStyle(
+                              color: Colors.orange[800],
+                              fontStyle: FontStyle.italic,
+                            ),
                           ),
                         ),
                       ],
@@ -245,31 +286,64 @@ class HomePage extends StatelessWidget {
                 ),
                 const SizedBox(height: 22),
 
-                // Botões
+                //Botões
                 SlideIn(
                   delay: const Duration(milliseconds: 220),
-                  child: Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
+                  child: Column(
                     children: [
-                      GradientButton(
-                        icon: Icons.person_add_alt_1,
-                        text: 'Iniciar novo paciente',
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const PatientFormPage()),
+                      Center(
+                        child: ConstrainedBox(
+                          constraints:
+                              const BoxConstraints(maxWidth: 260),
+                          child: GradientButton(
+                            icon: Icons.person_add_alt_1_rounded,
+                            text: 'Iniciar novo paciente',
+                            onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                  builder: (_) =>
+                                      const PatientFormPage()),
+                            ),
+                          ),
                         ),
                       ),
-                      OutlinedButton.icon(
-                        icon: const Icon(Icons.info_outline),
-                        label: const Text('Sobre'),
-                        onPressed: () => showAboutDialog(
-                          context: context,
-                          applicationName: 'InsuGuia (Protótipo Didático)',
-                          applicationVersion: 'Versão Acadêmica — 2025',
-                          applicationIcon: const Icon(Icons.medical_services),
-                          children: const [
-                            Text('Este aplicativo é uma prova de conceito educacional.'),
-                          ],
+                      const SizedBox(height: 10),
+                      Center(
+                        child: ConstrainedBox(
+                          constraints:
+                              const BoxConstraints(maxWidth: 260),
+                          child: SizedBox(
+                            height: 46,
+                            child: OutlinedButton.icon(
+                              icon: const Icon(
+                                  Icons.info_outline_rounded,
+                                  size: 18),
+                              label: const Text('Sobre'),
+                              onPressed: () => showAboutDialog(
+                                context: context,
+                                applicationName:
+                                    'InsuGuia (Protótipo Didático)',
+                                applicationVersion:
+                                    'Versão Acadêmica — 2025',
+                                applicationIcon:
+                                    const Icon(Icons.medical_services),
+                                children: const [
+                                  Text(
+                                      'Este aplicativo é uma prova de conceito educacional.'),
+                                ],
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                shape: const StadiumBorder(),
+                                side: BorderSide(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .outline
+                                      .withOpacity(0.5),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 24),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -284,7 +358,7 @@ class HomePage extends StatelessWidget {
   }
 }
 
-// ==================== FORMULÁRIO DO PACIENTE ====================
+// Formulário do paciente
 class PatientFormPage extends StatefulWidget {
   const PatientFormPage({super.key});
 
@@ -354,8 +428,10 @@ class _PatientFormPageState extends State<PatientFormPage> {
       sexo: _sexo,
       idade: int.tryParse(_idadeCtrl.text) ?? 0,
       pesoKg: double.tryParse(_pesoCtrl.text.replaceAll(',', '.')) ?? 0,
-      alturaCm: double.tryParse(_alturaCtrl.text.replaceAll(',', '.')) ?? 0,
-      creatinina: double.tryParse(_creatCtrl.text.replaceAll(',', '.')) ?? 0,
+      alturaCm:
+          double.tryParse(_alturaCtrl.text.replaceAll(',', '.')) ?? 0,
+      creatinina:
+          double.tryParse(_creatCtrl.text.replaceAll(',', '.')) ?? 0,
       local: _local,
       cenario: _cenario,
     );
@@ -365,7 +441,9 @@ class _PatientFormPageState extends State<PatientFormPage> {
     );
   }
 
-  InputDecoration _dec(String label, {String? helper, String? suffix}) => InputDecoration(
+  InputDecoration _dec(String label,
+          {String? helper, String? suffix}) =>
+      InputDecoration(
         labelText: label,
         helperText: helper,
         suffixText: suffix,
@@ -391,94 +469,141 @@ class _PatientFormPageState extends State<PatientFormPage> {
                       textInputAction: TextInputAction.next,
                       decoration: _dec('Nome (fictício)'),
                       onChanged: (_) => _saveDraft(),
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'Informe um nome' : null,
+                      validator: (v) =>
+                          (v == null || v.trim().isEmpty)
+                              ? 'Informe um nome'
+                              : null,
                     ),
                   ),
                   const SizedBox(height: 12),
                   SlideIn(
                     delay: const Duration(milliseconds: 100),
-                    child: Row(children: [
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          initialValue: _sexo,
-                          items: const [
-                            DropdownMenuItem(value: 'Masculino', child: Text('Masculino')),
-                            DropdownMenuItem(value: 'Feminino', child: Text('Feminino')),
-                            DropdownMenuItem(
-                                value: 'Outro/Prefere não informar',
-                                child: Text('Outro/Prefere não informar')),
-                          ],
-                          onChanged: (v) {
-                            setState(() => _sexo = v!);
-                            _saveDraft();
-                          },
-                          decoration: _dec('Sexo'),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            initialValue: _sexo,
+                            items: const [
+                              DropdownMenuItem(
+                                  value: 'Masculino',
+                                  child: Text('Masculino')),
+                              DropdownMenuItem(
+                                  value: 'Feminino',
+                                  child: Text('Feminino')),
+                              DropdownMenuItem(
+                                  value: 'Outro/Prefere não informar',
+                                  child: Text(
+                                      'Outro/Prefere não informar')),
+                            ],
+                            onChanged: (v) {
+                              setState(() => _sexo = v!);
+                              _saveDraft();
+                            },
+                            decoration: _dec('Sexo'),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _idadeCtrl,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                          decoration: _dec('Idade (anos)'),
-                          onChanged: (_) => _saveDraft(),
-                          validator: (v) {
-                            final i = int.tryParse(v ?? '');
-                            if (i == null || i < 0 || i > 120) return '0–120';
-                            return null;
-                          },
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _idadeCtrl,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly
+                            ],
+                            decoration: _dec('Idade (anos)'),
+                            onChanged: (_) => _saveDraft(),
+                            validator: (v) {
+                              final i = int.tryParse(v ?? '');
+                              if (i == null || i < 0 || i > 120) {
+                                return '0–120';
+                              }
+                              return null;
+                            },
+                          ),
                         ),
-                      ),
-                    ]),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 12),
                   SlideIn(
                     delay: const Duration(milliseconds: 180),
-                    child: Row(children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _pesoCtrl,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9,\.]'))],
-                          decoration: _dec('Peso', helper: 'Ex.: 72,5', suffix: 'kg'),
-                          onChanged: (_) => _saveDraft(),
-                          validator: (v) {
-                            final x = double.tryParse((v ?? '').replaceAll(',', '.'));
-                            if (x == null || x <= 0 || x > 400) return '1–400 kg';
-                            return null;
-                          },
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _pesoCtrl,
+                            keyboardType:
+                                const TextInputType.numberWithOptions(
+                                    decimal: true),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                  RegExp(r'[0-9,\.]'))
+                            ],
+                            decoration: _dec('Peso',
+                                helper: 'Ex.: 72,5', suffix: 'kg'),
+                            onChanged: (_) => _saveDraft(),
+                            validator: (v) {
+                              final x = double.tryParse(
+                                  (v ?? '').replaceAll(',', '.'));
+                              if (x == null || x <= 0 || x > 400) {
+                                return '1–400 kg';
+                              }
+                              return null;
+                            },
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextFormField(
-                          controller: _alturaCtrl,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9,\.]'))],
-                          decoration: _dec('Altura', helper: 'Ex.: 170', suffix: 'cm'),
-                          onChanged: (_) => _saveDraft(),
-                          validator: (v) {
-                            final x = double.tryParse((v ?? '').replaceAll(',', '.'));
-                            if (x == null || x <= 0 || x > 250) return '50–250 cm';
-                            return null;
-                          },
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _alturaCtrl,
+                            keyboardType:
+                                const TextInputType.numberWithOptions(
+                                    decimal: true),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                  RegExp(r'[0-9,\.]'))
+                            ],
+                            decoration: _dec('Altura',
+                                helper: 'Ex.: 170', suffix: 'cm'),
+                            onChanged: (_) => _saveDraft(),
+                            validator: (v) {
+                              final x = double.tryParse(
+                                  (v ?? '').replaceAll(',', '.'));
+                              if (x == null || x <= 0 || x > 250) {
+                                return '50–250 cm';
+                              }
+                              return null;
+                            },
+                          ),
                         ),
-                      ),
-                    ]),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 12),
                   SlideIn(
                     delay: const Duration(milliseconds: 240),
                     child: TextFormField(
                       controller: _creatCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9,\.]'))],
-                      decoration: _dec('Creatinina', helper: 'Usada apenas como dado exibido nesta versão', suffix: 'mg/dL'),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(
+                              decimal: true),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                            RegExp(r'[0-9,\.]'))
+                      ],
+                      decoration: _dec(
+                        'Creatinina',
+                        helper:
+                            'Usada apenas como dado exibido nesta versão',
+                        suffix: 'mg/dL',
+                      ),
                       onChanged: (_) => _saveDraft(),
                       validator: (v) {
-                        final x = double.tryParse((v ?? '').replaceAll(',', '.'));
-                        if (x == null || x < 0 || x > 20) return '0–20 mg/dL';
+                        final x = double.tryParse(
+                            (v ?? '').replaceAll(',', '.'));
+                        if (x == null || x < 0 || x > 20) {
+                          return '0–20 mg/dL';
+                        }
                         return null;
                       },
                     ),
@@ -486,38 +611,52 @@ class _PatientFormPageState extends State<PatientFormPage> {
                   const SizedBox(height: 12),
                   SlideIn(
                     delay: const Duration(milliseconds: 300),
-                    child: Row(children: [
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          initialValue: _local,
-                          items: const [
-                            DropdownMenuItem(value: 'Enfermaria', child: Text('Enfermaria')),
-                            DropdownMenuItem(value: 'UTI', child: Text('UTI')),
-                            DropdownMenuItem(value: 'Ambulatório', child: Text('Ambulatório')),
-                          ],
-                          onChanged: (v) {
-                            setState(() => _local = v!);
-                            _saveDraft();
-                          },
-                          decoration: _dec('Local de internação'),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            initialValue: _local,
+                            items: const [
+                              DropdownMenuItem(
+                                  value: 'Enfermaria',
+                                  child: Text('Enfermaria')),
+                              DropdownMenuItem(
+                                  value: 'UTI', child: Text('UTI')),
+                              DropdownMenuItem(
+                                  value: 'Ambulatório',
+                                  child: Text('Ambulatório')),
+                            ],
+                            onChanged: (v) {
+                              setState(() => _local = v!);
+                              _saveDraft();
+                            },
+                            decoration:
+                                _dec('Local de internação'),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          initialValue: _cenario,
-                          items: const [
-                            DropdownMenuItem(value: 'Não crítico', child: Text('Não crítico')),
-                            DropdownMenuItem(value: 'Outro (sem cálculo)', child: Text('Outro (sem cálculo)')),
-                          ],
-                          onChanged: (v) {
-                            setState(() => _cenario = v!);
-                            _saveDraft();
-                          },
-                          decoration: _dec('Classificação clínica'),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            initialValue: _cenario,
+                            items: const [
+                              DropdownMenuItem(
+                                  value: 'Não crítico',
+                                  child: Text('Não crítico')),
+                              DropdownMenuItem(
+                                  value: 'Outro (sem cálculo)',
+                                  child: Text(
+                                      'Outro (sem cálculo)')),
+                            ],
+                            onChanged: (v) {
+                              setState(() => _cenario = v!);
+                              _saveDraft();
+                            },
+                            decoration:
+                                _dec('Classificação clínica'),
+                          ),
                         ),
-                      ),
-                    ]),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 18),
                   FilledButton.icon(
@@ -540,6 +679,7 @@ class _PatientFormPageState extends State<PatientFormPage> {
   }
 }
 
+// Sugestão para o paciente
 class SuggestionPage extends StatelessWidget {
   final Patient patient;
   const SuggestionPage({super.key, required this.patient});
@@ -547,10 +687,12 @@ class SuggestionPage extends StatelessWidget {
   String _buildSuggestion() {
     final b = StringBuffer();
     b.writeln('InsuGuia — Sugestão (SIMULADO)\n');
-    b.writeln('Paciente: ${patient.nome} | Sexo: ${patient.sexo} | Idade: ${patient.idade}');
+    b.writeln(
+        'Paciente: ${patient.nome} | Sexo: ${patient.sexo} | Idade: ${patient.idade}');
     b.writeln(
         'Cenário: ${patient.cenario} | Peso: ${patient.pesoKg.toStringAsFixed(1)} kg | Altura: ${patient.alturaCm.toStringAsFixed(0)} cm');
-    b.writeln('Creatinina: ${patient.creatinina.toStringAsFixed(2)} mg/dL | Local: ${patient.local}\n');
+    b.writeln(
+        'Creatinina: ${patient.creatinina.toStringAsFixed(2)} mg/dL | Local: ${patient.local}\n');
 
     double? basal;
     if (patient.cenario == 'Não crítico') {
@@ -558,15 +700,21 @@ class SuggestionPage extends StatelessWidget {
     }
 
     b.writeln('1) Dieta: conforme avaliação da equipe (simulado).');
-    b.writeln('2) Monitorização: glicemias AC/HS; considerar 03:00 se necessário (simulado).');
+    b.writeln(
+        '2) Monitorização: glicemias AC/HS; considerar 03:00 se necessário (simulado).');
     if (basal != null) {
-      b.writeln('3) Basal: dose inicial sugerida (simulada): ${basal.toStringAsFixed(1)} UI SC à noite (0,2 UI/kg).');
+      b.writeln(
+          '3) Basal: dose inicial sugerida (simulada): ${basal.toStringAsFixed(1)} UI SC à noite (0,2 UI/kg).');
     } else {
-      b.writeln('3) Basal: não calculado para este cenário (simulado).');
+      b.writeln(
+          '3) Basal: não calculado para este cenário (simulado).');
     }
-    b.writeln('4) Insulina de ação rápida: correção conforme faixa (simulado).');
-    b.writeln('5) Hipoglicemia: seguir protocolo institucional (simulado).');
-    b.writeln('\n⚠️ Conteúdo didático. Não utilizar para decisões clínicas.');
+    b.writeln(
+        '4) Insulina de ação rápida: correção conforme faixa (simulado).');
+    b.writeln(
+        '5) Hipoglicemia: seguir protocolo institucional (simulado).');
+    b.writeln(
+        '\n⚠️ Conteúdo didático. Não utilizar para decisões clínicas.');
     return b.toString();
   }
 
@@ -574,13 +722,16 @@ class SuggestionPage extends StatelessWidget {
     await Clipboard.setData(ClipboardData(text: _buildSuggestion()));
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Texto copiado para a área de transferência.')),
+        const SnackBar(
+            content:
+                Text('Texto copiado para a área de transferência.')),
       );
     }
   }
 
   void _baixarTxt() {
-    downloadTxt(_buildSuggestion(), 'sugestao_${patient.nome}.txt');
+    downloadTxt(_buildSuggestion(),
+        'sugestao_${patient.nome}.txt');
   }
 
   @override
@@ -598,11 +749,13 @@ class SuggestionPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Card com leve gradient de fundo
                 Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [cs.primary.withOpacity(0.06), cs.secondary.withOpacity(0.04)],
+                      colors: [
+                        cs.primary.withOpacity(0.06),
+                        cs.secondary.withOpacity(0.04)
+                      ],
                     ),
                     borderRadius: BorderRadius.circular(20),
                   ),
@@ -628,16 +781,22 @@ class SuggestionPage extends StatelessWidget {
                     ),
                     OutlinedButton.icon(
                       icon: const Icon(Icons.monitor_heart),
-                      label: const Text('Acompanhamento diário (simulado)'),
+                      label:
+                          const Text('Acompanhamento diário (simulado)'),
                       onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => FollowUpPage(patient: patient)),
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                FollowUpPage(patient: patient)),
                       ),
                     ),
                     OutlinedButton.icon(
                       icon: const Icon(Icons.local_hospital),
-                      label: const Text('Alta hospitalar (simulado)'),
+                      label:
+                          const Text('Alta hospitalar (simulado)'),
                       onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => DischargePage(patient: patient)),
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                DischargePage(patient: patient)),
                       ),
                     ),
                     OutlinedButton.icon(
@@ -669,7 +828,7 @@ class SuggestionPage extends StatelessWidget {
   }
 }
 
-// ==================== ACOMPANHAMENTO DIÁRIO (SIMULADO) ====================
+// Acompanhamento diário
 class FollowUpPage extends StatefulWidget {
   final Patient patient;
   const FollowUpPage({super.key, required this.patient});
@@ -700,12 +859,14 @@ class _FollowUpPageState extends State<FollowUpPage> {
 
   String _sugestaoAjuste() {
     if (_leituras.isEmpty) return 'Sem leituras até o momento.';
-    // regra SIMPLIFICADA para demo — média de jejum (AC Café)
-    final jejum =
-        _leituras.where((e) => e.momento == 'AC Café').map((e) => e.valor).toList();
+    final jejum = _leituras
+        .where((e) => e.momento == 'AC Café')
+        .map((e) => e.valor)
+        .toList();
     double? mediaJejum;
     if (jejum.isNotEmpty) {
-      mediaJejum = jejum.reduce((a, b) => a + b) / jejum.length;
+      mediaJejum =
+          jejum.reduce((a, b) => a + b) / jejum.length;
     }
 
     if (mediaJejum != null) {
@@ -739,23 +900,39 @@ class _FollowUpPageState extends State<FollowUpPage> {
                     child: DropdownButtonFormField<String>(
                       initialValue: _momento,
                       items: const [
-                        DropdownMenuItem(value: 'AC Café', child: Text('AC Café')),
-                        DropdownMenuItem(value: 'AC Almoço', child: Text('AC Almoço')),
-                        DropdownMenuItem(value: 'AC Jantar', child: Text('AC Jantar')),
-                        DropdownMenuItem(value: 'HS', child: Text('HS (ao deitar)')),
-                        DropdownMenuItem(value: '03:00', child: Text('03:00 (se necessário)')),
+                        DropdownMenuItem(
+                            value: 'AC Café', child: Text('AC Café')),
+                        DropdownMenuItem(
+                            value: 'AC Almoço',
+                            child: Text('AC Almoço')),
+                        DropdownMenuItem(
+                            value: 'AC Jantar',
+                            child: Text('AC Jantar')),
+                        DropdownMenuItem(
+                            value: 'HS',
+                            child: Text('HS (ao deitar)')),
+                        DropdownMenuItem(
+                            value: '03:00',
+                            child: Text('03:00 (se necessário)')),
                       ],
                       onChanged: (v) => setState(() => _momento = v!),
-                      decoration: const InputDecoration(labelText: 'Momento'),
+                      decoration:
+                          const InputDecoration(labelText: 'Momento'),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: TextField(
                       controller: _valorCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9,\.]'))],
-                      decoration: const InputDecoration(labelText: 'Glicemia (mg/dL)'),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(
+                              decimal: true),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                            RegExp(r'[0-9,\.]'))
+                      ],
+                      decoration: const InputDecoration(
+                          labelText: 'Glicemia (mg/dL)'),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -770,12 +947,15 @@ class _FollowUpPageState extends State<FollowUpPage> {
                   child: Card(
                     child: ListView.separated(
                       itemCount: _leituras.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      separatorBuilder: (_, __) =>
+                          const Divider(height: 1),
                       itemBuilder: (context, i) {
                         final e = _leituras[i];
                         return ListTile(
-                          leading: Icon(Icons.bloodtype_outlined, color: cs.primary),
-                          title: Text('${e.momento} — ${e.valor.toStringAsFixed(0)} mg/dL'),
+                          leading: Icon(Icons.bloodtype_outlined,
+                              color: cs.primary),
+                          title: Text(
+                              '${e.momento} — ${e.valor.toStringAsFixed(0)} mg/dL'),
                           subtitle: Text(
                               '${e.ts.hour.toString().padLeft(2, '0')}:${e.ts.minute.toString().padLeft(2, '0')}'),
                         );
@@ -801,7 +981,7 @@ class _FollowUpPageState extends State<FollowUpPage> {
   }
 }
 
-// ==================== ALTA (SIMULADO) ====================
+//Alta
 class DischargePage extends StatelessWidget {
   final Patient patient;
   const DischargePage({super.key, required this.patient});
