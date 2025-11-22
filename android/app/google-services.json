@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "952074460252",
+    "project_id": "insuguia-b5890",
+    "storage_bucket": "insuguia-b5890.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:952074460252:android:47f24837f541d577921a99",
+        "android_client_info": {
+          "package_name": "com.example.insuguia_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAz7f2Py1sCxfKrRp1hYVexMx5-uAA46hs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

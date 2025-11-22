@@ -33,6 +33,29 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <!-- Firebase Web SDK (modular). Add more SDK imports if needed. -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getAnalytics, isSupported } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-analytics.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBwrRjKACTIb8NdQagSLAEKOGFaBDYJ0pa0",
+      authDomain: "insuguia-b5890.firebaseapp.com",
+      projectId: "insuguia-b5890",
+      storageBucket: "insuguia-b5890.appspot.com",
+      messagingSenderId: "952074460252",
+      appId: "1:952074460252:web:64988cbbe4b6564a921a99",
+      measurementId: "G-SY3209LC0Z"
+    };
+
+    (async () => {
+      const app = initializeApp(firebaseConfig);
+      if (await isSupported()) {
+        getAnalytics(app);
+      }
+    })();
+  </script>
+
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
