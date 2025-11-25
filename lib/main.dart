@@ -461,6 +461,34 @@ class HomePage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 10),
+
+                      // NOVO: botão para lista de pacientes
+                      Center(
+                        child: ConstrainedBox(
+                          constraints:
+                              const BoxConstraints(maxWidth: 260),
+                          child: SizedBox(
+                            height: 46,
+                            child: OutlinedButton.icon(
+                              icon: const Icon(Icons.list_alt_rounded,
+                                  size: 18),
+                              label:
+                                  const Text('Lista de pacientes (Firebase)'),
+                              onPressed: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const PatientsListPage(),
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                shape: const StadiumBorder(),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
                       Center(
                         child: ConstrainedBox(
                           constraints:
@@ -497,6 +525,115 @@ class HomePage extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ===== NOVA TELA: LISTA DE PACIENTES =====
+class PatientsListPage extends StatelessWidget {
+  const PatientsListPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Pacientes (Firebase)')),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 900),
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: pacientesRef
+                  .orderBy('createdAt', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Text('Erro ao carregar pacientes: ${snapshot.error}');
+                }
+
+                if (!snapshot.hasData) {
+                  return const CircularProgressIndicator();
+                }
+
+                final docs = snapshot.data!.docs;
+
+                if (docs.isEmpty) {
+                  return const Text('Nenhum paciente cadastrado.');
+                }
+
+                return Card(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: cs.primary.withOpacity(0.04),
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(16),
+                          ),
+                        ),
+                        child: const Text(
+                          'Pacientes cadastrados',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const Divider(height: 0),
+                      Expanded(
+                        child: ListView.separated(
+                          itemCount: docs.length,
+                          separatorBuilder: (_, __) =>
+                              const Divider(height: 0),
+                          itemBuilder: (context, index) {
+                            final doc = docs[index];
+                            final patient =
+                                Patient.fromFirestore(doc);
+
+                            return ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: cs.primaryContainer,
+                                child: Text(
+                                  patient.nome.isNotEmpty
+                                      ? patient.nome[0].toUpperCase()
+                                      : '?',
+                                  style: TextStyle(
+                                    color: cs.onPrimaryContainer,
+                                  ),
+                                ),
+                              ),
+                              title: Text(patient.nome),
+                              subtitle: Text(
+                                'Idade: ${patient.idade} | Sexo: ${patient.sexo} | Local: ${patient.local}',
+                              ),
+                              trailing: FilledButton(
+                                onPressed: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => SuggestionPage(
+                                        patient: patient,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: const Text('Detalhes'),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         ),
@@ -843,13 +980,13 @@ class SuggestionPage extends StatelessWidget {
 
   String _buildSuggestion() {
     final b = StringBuffer();
-    b.writeln('InsuGuia — Sugestão (SIMULADO)\\n');
+    b.writeln('InsuGuia — Sugestão (SIMULADO)\n');
     b.writeln(
         'Paciente: ${patient.nome} | Sexo: ${patient.sexo} | Idade: ${patient.idade}');
     b.writeln(
         'Cenário: ${patient.cenario} | Peso: ${patient.pesoKg.toStringAsFixed(1)} kg | Altura: ${patient.alturaCm.toStringAsFixed(0)} cm');
     b.writeln(
-        'Creatinina: ${patient.creatinina.toStringAsFixed(2)} mg/dL | Local: ${patient.local}\\n');
+        'Creatinina: ${patient.creatinina.toStringAsFixed(2)} mg/dL | Local: ${patient.local}\n');
 
     double? basal;
     if (patient.cenario == 'Não crítico') {
@@ -913,8 +1050,8 @@ class SuggestionPage extends StatelessWidget {
                         icon: const Icon(Icons.download),
                         label: const Text('Baixar .txt'),
                         onPressed: () => downloadTxt(
-                          texto,                      // conteúdo do arquivo
-                          'sugestao_insuguia.txt',    // nome do arquivo
+                          texto,
+                          'sugestao_insuguia.txt',
                         ),
                       ),
                       OutlinedButton.icon(
@@ -959,7 +1096,6 @@ class SuggestionPage extends StatelessWidget {
     );
   }
 }
-
 class FollowUpPage extends StatefulWidget {
   final Patient patient;
   const FollowUpPage({super.key, required this.patient});
@@ -991,7 +1127,8 @@ class _FollowUpPageState extends State<FollowUpPage> {
               snapshot.docs
                   .map(
                     (doc) => GlycemiaReading.fromFirestore(
-                        doc as DocumentSnapshot<Map<String, dynamic>>),
+                      doc as DocumentSnapshot<Map<String, dynamic>>,
+                    ),
                   )
                   .toList(),
             );
@@ -1041,6 +1178,7 @@ class _FollowUpPageState extends State<FollowUpPage> {
         .where((e) => e.momento == 'AC Café')
         .map((e) => e.valor)
         .toList();
+
     double? mediaJejum;
     if (jejum.isNotEmpty) {
       mediaJejum =
@@ -1105,7 +1243,7 @@ class _FollowUpPageState extends State<FollowUpPage> {
                               decimal: true),
                       inputFormatters: [
                         FilteringTextInputFormatter.allow(
-                            RegExp(r'[0-9,\\.]'))
+                            RegExp(r'[0-9,\.]'))
                       ],
                       decoration: const InputDecoration(
                           labelText: 'Glicemia (mg/dL)'),
@@ -1188,13 +1326,13 @@ class DischargePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final orientacoes = [
-      'Orientações gerais — SIMULADO:\\n',
-      '• Manter acompanhamento ambulatorial conforme equipe.\\n',
-      '• Educar sobre sinais de hipoglicemia e condutas (15–15).\\n',
-      '• Revisar técnica de aplicação e locais de aplicação.\\n',
-      '• Plano de monitorização domiciliar (AC/HS) — simulado.\\n',
-      '• Reforçar que este app é didático e não substitui conduta clínica.\\n',
-    ].join('\\n');
+      'Orientações gerais — SIMULADO:\n',
+      '• Manter acompanhamento ambulatorial conforme equipe.\n',
+      '• Educar sobre sinais de hipoglicemia e condutas (15–15).\n',
+      '• Revisar técnica de aplicação e locais de aplicação.\n',
+      '• Plano de monitorização domiciliar (AC/HS) — simulado.\n',
+      '• Reforçar que este app é didático e não substitui conduta clínica.\n',
+    ].join('\n');
 
     return Scaffold(
       appBar: AppBar(title: const Text('Alta hospitalar (simulado)')),
