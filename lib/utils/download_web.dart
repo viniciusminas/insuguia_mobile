@@ -1,20 +1,20 @@
-import 'package:web/web.dart' as web;
-import 'dart:js_interop'; // habilita .toJS
+// lib/utils/download_web.dart
+import 'dart:convert';
+import 'dart:html' as html;
 
-void downloadTxt(String content, String filename) {
-  // Cria JSArray<BlobPart> a partir de String
-  final parts = <web.BlobPart>[content.toJS].toJS;
+/// Baixa um .txt no navegador Web.
+Future<void> downloadTxt(String content, String filename) async {
+  final bytes = utf8.encode(content);
+  final blob = html.Blob([bytes], 'text/plain;charset=utf-8');
+  final url = html.Url.createObjectUrlFromBlob(blob);
 
-  final blob = web.Blob(
-    parts,
-    web.BlobPropertyBag(type: 'text/plain'),
-  );
-  final url = web.URL.createObjectURL(blob);
+  final anchor = html.AnchorElement(href: url)
+    ..setAttribute('download', filename)
+    ..style.display = 'none';
 
-  final a = web.HTMLAnchorElement()
-    ..href = url
-    ..download = filename;
-  a.click();
+  html.document.body?.append(anchor);
+  anchor.click();
+  anchor.remove();
 
-  web.URL.revokeObjectURL(url);
+  html.Url.revokeObjectUrl(url);
 }
