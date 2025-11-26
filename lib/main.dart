@@ -1198,15 +1198,17 @@ class SuggestionPage extends StatelessWidget {
     return b.toString();
   }
 
-  @override
+ @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final texto = _buildSuggestion();
+
     return Scaffold(
       appBar: AppBar(title: const Text('Sugestão (simulada)')),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
+      body: SingleChildScrollView(
+        // este padding aqui substitui o Padding antigo
+        padding: const EdgeInsets.all(24.0),
+        child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 760),
             child: Column(
@@ -1272,8 +1274,10 @@ class SuggestionPage extends StatelessWidget {
                 const SizedBox(height: 12),
                 const Text(
                   '⚠️ Conteúdo apenas ilustrativo. Não substitui protocolos ou julgamento clínico.',
-                  style:
-                      TextStyle(fontStyle: FontStyle.italic, fontSize: 12),
+                  style: TextStyle(
+                    fontStyle: FontStyle.italic,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
