@@ -1,138 +1,206 @@
-# insuguia_mobile
-
-A new Flutter project.
-
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
-
-
-## REDME em construção (Acompanhamento e registro de implementações)
-
 # InsuGuia Mobile (Protótipo Didático)
 
-> Este app é um **protótipo educacional** que **simula** recomendações iniciais para manejo de glicemia em **paciente não crítico**. **Não** é um dispositivo médico e **não deve** ser usado para decisões clínicas.
+Protótipo educacional em Flutter que **simula recomendações iniciais** para manejo de glicemia em paciente **não crítico** durante internação hospitalar.  
+
+Não é um dispositivo médico, não foi validado para uso clínico e **não deve ser utilizado para decisões reais em saúde**.
 
 ---
 
-## Sobre o projeto
+## Contexto e objetivos
 
-O **InsuGuia Mobile** é um app Flutter criado como parte do Projeto de Extensão da disciplina **Desenvolvimento para Plataformas Móveis**. Nesta fase (Entrega 2), o foco foi evoluir o protótipo com **ajustes de UX**, **feedback ao usuário**, **persistência leve de rascunho**, **exportação do texto da sugestão via download para os usuários** e **testes de widget**.
+Este app foi desenvolvido como parte do **Projeto de Extensão da disciplina Desenvolvimento para Plataformas Móveis** (UNIDAVI).
 
+Principais objetivos:
+
+- Exercitar o uso de **Flutter** com **Firebase/Firestore** em um cenário próximo da prática em saúde.
+- Traduzir a resposta de um médico especialista (Dr. Itairan) em um **fluxo digital guiado**.
+- Implementar um cálculo **simulado** de dose de insulina em cenário **não crítico**, com foco em aprendizado, não em precisão clínica.
+- Garantir uma UX simples para cadastro, visualização e acompanhamento didático dos pacientes.
 
 ---
 
-## Como rodar
+## Escopo clínico (didático)
+
+- Cenário: paciente **adulto, não crítico**, em ambiente de **enfermaria** ou similar.
+- O app **não** cobre todos os cenários do protocolo (ex.: UTI, NPO, nutrição parenteral total, insulinoterapia prévia complexa).
+- A lógica de cálculo é baseada em um **resumo simplificado** do protocolo:  
+  – Dose Total Diária (DTD) proporcional ao peso  
+  – Separação em insulina basal e prandial  
+  – Distribuição de NPH e rápida para paciente em dieta oral  
+
+Em todos os textos da interface está reforçado o caráter **exclusivamente acadêmico** do protótipo.
+
+---
+
+## Principais funcionalidades
+
+### 1. Cadastro de paciente
+
+Tela de formulário com:
+
+- Nome (fictício)
+- Sexo
+- Idade
+- Peso (kg)
+- Altura (cm)
+- Creatinina (mg/dL)
+- Local (Enfermaria, UTI, Ambulatório)
+- Cenário (Crítico / Não crítico)
+
+O formulário possui:
+
+- **Validação básica** de faixas (ex.: peso, altura, creatinina).
+- **Persistência leve de rascunho** com `shared_preferences`  
+  (se o usuário sair da tela, parte dos dados permanece preenchida).
+
+Os pacientes são salvos em uma coleção `pacientes` do **Cloud Firestore**.
+
+### 2. Lista de pacientes (Firestore)
+
+- Tela de listagem que exibe todos os pacientes cadastrados no Firebase, em ordem decrescente de criação.
+- Cada item mostra nome, idade, sexo e local.
+- Botão “Detalhes” abre a tela de **Sugestão** para aquele paciente.
+
+### 3. Cálculo simulado de insulina (cenário não crítico)
+
+Na tela de **Sugestão**, para pacientes com cenário “Não crítico”:
+
+1. **Cálculo de IMC** a partir de peso e altura.
+2. Estimativa de **sensibilidade à insulina** (sensível / habitual / resistente) de forma didática, usando faixas de IMC.
+3. Cálculo da **Dose Total Diária (DTD)** na faixa de **0,2 a 0,6 UI/kg/dia**, onde:
+   - Metade da DTD é considerada **insulina basal**.
+   - Metade da DTD é considerada **bôlus/prandial**.
+4. Distribuição da insulina basal como **NPH 3x/dia** (06h, 11h, 22h).
+5. Distribuição da insulina rápida como **3 doses pré-refeição** (café, almoço, jantar).
+6. **Arredondamento das doses** para unidades inteiras, simulando a limitação dos dispositivos de aplicação.
+
+O resultado é apresentado em forma de texto estruturado, incluindo:
+
+- Dieta (descrita de forma genérica).
+- Monitorização glicêmica (AC/HS, 03h se necessário).
+- Insulina basal (NPH, três horários).
+- Insulina rápida/prandial antes das refeições.
+- Recomendações gerais de correção e reavaliação diária (simuladas).
+
+Para cenários diferentes de “Não crítico”, a tela gera um texto mais genérico, sem cálculo detalhado.
+
+### 4. Exportação da sugestão
+
+Na tela de Sugestão:
+
+- Botão **“Baixar .txt”** que exporta o texto gerado para um arquivo `.txt`  
+  (implementação específica para Web, via `utils/download.dart`).
+
+### 5. Acompanhamento diário (simulado)
+
+Tela de **Acompanhamento diário** para cada paciente:
+
+- Permite registrar glicemias em diferentes momentos:
+  - AC Café, AC Almoço, AC Jantar, HS (ao deitar), 03:00.
+- As leituras são salvas em uma subcoleção `acompanhamentos` do paciente no Firestore.
+- A tela exibe a lista das últimas leituras e uma frase-resumo:
+
+  - Média de jejum (AC Café) > 180 → sugerir aumento ~10% da basal (simulado).  
+  - Média de jejum < 70 → sugerir redução ~10% da basal (simulado).  
+  - Média dentro da faixa → sugerir manutenção da dose basal.
+
+Essa lógica é apenas **ilustrativa**, para apoiar a discussão em sala.
+
+### 6. Alta hospitalar (simulada)
+
+Tela de **Alta**:
+
+- Exibe orientações gerais simuladas para o paciente.
+- Possui botão para **remover o paciente** do Firestore, incluindo seus acompanhamentos.
+- Após remover, retorna à tela inicial.
+
+```
+
+Principais pacotes utilizados:
+
+- `flutter` (SDK)
+- `firebase_core`
+- `cloud_firestore`
+- `shared_preferences`
+
+---
+
+## Como executar o projeto
 
 ### Pré-requisitos
 
-* **Flutter**
-* VS Code ou Android Studio (opcional)
-* Para **Web**: Chrome/Edge
-* Para **Windows**: Visual Studio com workload **Desktop development with C++** e **Developer Mode** do Windows habilitado
+- Flutter instalado (canal stable).
+- Conta Firebase configurada para Web/Windows, com `firebase_options.dart` gerado.
+- Para Web: navegador (Chrome ou Edge).
+- Para Windows:
+  - Visual Studio com workload **“Desktop development with C++”**.
+  - Modo de Desenvolvedor habilitado no Windows.
 
-### Passos (vale para Web e Windows)
+### Passos gerais
+
+Na pasta do projeto:
 
 ```bash
 flutter clean
 flutter pub get
 ```
 
-### Rodar no navegador (Web)
+### Executar no navegador (Web)
 
 ```bash
 flutter config --enable-web
 flutter run -d chrome   # ou -d edge
 ```
 
-### Rodar como app de Windows
-
-> Requer Developer Mode habilitado.
+### Executar como app de Windows
 
 ```bash
 flutter config --enable-windows-desktop
 flutter run -d windows
 ```
 
----
-
-## Implementado na Entrega 2
-
-* **Validação/UX do formulário**: campo **Peso (kg)** com máscara simples, *helper text* e validação (faixa 1–400).
-* **Tema e consistência**: Material 3 com *seed color* e leve aumento da tipografia (via `MediaQuery.textScaler`).
-* **Feedback ao usuário**: banner de **uso didático** e **SnackBar** ao copiar a sugestão.
-* **Exportar sugestão (Web)**: botão **Baixar .txt** realiza o download do texto gerado.
-* **Persistência leve (rascunho)**: guarda **nome** e **peso** com `shared_preferences`.
-* **Acessibilidade**: `Semantics` no texto da sugestão.
-* **Testes de widget**: smoke test da Home e fluxo **Novo Paciente → Sugestão**.
+Observação: mensagens relacionadas a Android/Gradle podem aparecer no editor. Se o foco da entrega não inclui Android, essas mensagens podem ser ignoradas nesta fase.
 
 ---
 
 ## Testes
 
-Rode os testes com:
+Caso existam testes de widget adicionais, eles podem ser executados com:
 
 ```bash
 flutter test
 ```
 
-Arquivos sugeridos:
+---
 
-* `test/home_smoke_test.dart` — Home e fluxo até a tela de Sugestão
-* `test/draft_and_feedback_test.dart` — rascunho (SharedPreferences mock) e SnackBar de cópia
+## Limitações e próximos passos
+
+Algumas simplificações importantes:
+
+- A decisão entre **apenas correção**, **basal/bôlus** e **basal/correção** ainda não está totalmente automatizada; o protótipo assume cenário de **dieta oral em esquema basal/bôlus** para o cálculo detalhado.
+- A lógica para pacientes em **NPO** ou em **nutrição enteral/parenteral** está apenas descrita de forma genérica, não implementada em regras completas.
+- O manejo de **hipoglicemia** é resumido em orientações textuais, sem árvore de decisão clínica detalhada.
+
+Possíveis evoluções:
+
+- Extrair a lógica de cálculo para uma **camada de domínio** separada (testável de forma isolada).
+- Implementar estados com Riverpod ou outro gerenciador de estado.
+- Ampliar a cobertura de cenários (NPO, enteral/parenteral, insulinoterapia prévia complexa).
+- Melhorar responsividade para telas muito estreitas e suporte a tema escuro.
+- Aprofundar a suíte de testes (unitários e de widget).
 
 ---
 
-## 🗂️ Estrutura (simplificada)
+## Aviso importante
 
-```
-lib/
- ├─ main.dart                # telas: Home, Formulário, Sugestão
- └─ utils/
-     ├─ download.dart        # export condicional (web/io)
-     ├─ download_web.dart    # implementação web (package:web)
-     ├─ download_io.dart     # implementação desktop (file_selector) [opcional]
-     └─ download_stub.dart   # no-op fallback
-```
+Este projeto tem **caráter exclusivamente acadêmico/didático**.  
+Não substitui protocolos institucionais, diretrizes científicas ou julgamento clínico individualizado.
 
 ---
 
-## ⚠️ Observações
+## Equipe
 
-* Mensagens relacionadas a **Android/Gradle** podem aparecer no painel do editor. Se não for compilar para Android nesta fase, ignore.
-* O botão **Baixar .txt** funciona diretamente na **Web**; no **Windows** requer a implementação com `file_selector` no qual ainda não implementamos na aplicação.
-
----
-
-## 🧭 Roadmap (próximas entregas)
-
-* Camada de **regras/domain** para os cálculos simulados
-* Estado com **Riverpod** (ou similar)
-* Reformatar a sugestão em **seções/tabela**
-* **Responsividade** para telas muito estreitas e **dark mode**
-* Protótipo de **acompanhamento diário** (simulado)
-
----
-
-## 📄 Licença/uso
-
-Projeto de caráter **acadêmico/didático**. Não utilizar para decisões clínicas.
-
----
-
-## 👥 Equipe
-
-* Pedro Henrique Scheidt
-* Vinícius Minas
-
-Professor: Sandro Alencar Fernandes — Projeto de Extensão / Desenvolvimento para Plataformas Móveis
-
+- **Pedro Henrique Scheidt**
+- **Vinícius Minas**
+- **Professor:** Sandro Alencar Fernandes  
+  Projeto de Extensão – Desenvolvimento para Plataformas Móveis
