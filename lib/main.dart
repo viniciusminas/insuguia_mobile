@@ -319,7 +319,113 @@ class GlycemiaReading {
   }
 }
 
-// Referências e helpers do Firebase/Firestore
+// ===================================================================
+// BLOCO DE CÁLCULO – BASEADO NO QUE O MÉDICO DESCREVE
+// (DTD, basal, bôlus, divisão de doses, arredondamento)
+// ===================================================================
+
+/// Sensibilidade didática à insulina.
+/// A versão atual estima isso pelo IMC apenas para fins educativos.
+enum Sensibilidade { sensivel, usual, resistente }
+
+class DosesBasicas {
+  final double dtd; // Dose Total Diária
+  final double doseBasalTotal;
+  final double doseBolusTotal;
+
+  const DosesBasicas({
+    required this.dtd,
+    required this.doseBasalTotal,
+    required this.doseBolusTotal,
+  });
+}
+
+class DosesBasalNph {
+  final double manha;
+  final double almoco;
+  final double noite;
+
+  const DosesBasalNph(this.manha, this.almoco, this.noite);
+}
+
+class DosesBolusOral {
+  final double cafe;
+  final double almoco;
+  final double jantar;
+
+  const DosesBolusOral(this.cafe, this.almoco, this.jantar);
+}
+
+/// IMC = peso / altura² (altura em metros).
+double? calcularImc(double pesoKg, double alturaCm) {
+  if (pesoKg <= 0 || alturaCm <= 0) return null;
+  final alturaM = alturaCm / 100;
+  if (alturaM <= 0) return null;
+  return pesoKg / (alturaM * alturaM);
+}
+
+/// Regra didática para estimar sensibilidade pela faixa de IMC.
+/// Isso é apenas para o protótipo; na prática usariam critérios clínicos.
+Sensibilidade inferirSensibilidade(double? imc) {
+  if (imc == null) return Sensibilidade.usual;
+  if (imc < 25) return Sensibilidade.sensivel;
+  if (imc < 30) return Sensibilidade.usual;
+  return Sensibilidade.resistente;
+}
+
+/// Calcula DTD e reparte metade basal / metade bôlus.
+/// Faixa: 0,2–0,6 UI/kg/dia, conforme sensibilidade.
+DosesBasicas calcularDtdBasalBolus({
+  required double pesoKg,
+  required Sensibilidade sensibilidade,
+}) {
+  double basalPorKg;
+  switch (sensibilidade) {
+    case Sensibilidade.sensivel:
+      basalPorKg = 0.1; // 0,1 UI/kg/dia basal
+      break;
+    case Sensibilidade.usual:
+      basalPorKg = 0.2; // 0,2 UI/kg/dia basal
+      break;
+    case Sensibilidade.resistente:
+      basalPorKg = 0.3; // 0,3 UI/kg/dia basal
+      break;
+  }
+
+  final doseBasalTotal = pesoKg * basalPorKg; // 0,1–0,3
+  final dtd = doseBasalTotal * 2; // metade basal, metade bôlus
+  final doseBolusTotal = dtd - doseBasalTotal;
+
+  return DosesBasicas(
+    dtd: dtd,
+    doseBasalTotal: doseBasalTotal,
+    doseBolusTotal: doseBolusTotal,
+  );
+}
+
+/// Divide NPH em 3 doses iguais (06h, 11h, 22h).
+DosesBasalNph dividirNph3x(double doseBasalTotal) {
+  final porDose = doseBasalTotal / 3;
+  return DosesBasalNph(porDose, porDose, porDose);
+}
+
+/// Divide bôlus em 3 doses iguais (antes das refeições).
+DosesBolusOral dividirBolusOral(double doseBolusTotal) {
+  final porRefeicao = doseBolusTotal / 3;
+  return DosesBolusOral(porRefeicao, porRefeicao, porRefeicao);
+}
+
+/// Arredonda a dose para o passo disponível no dispositivo (1 ou 2 UI).
+int arredondarDose(double dose, {bool duasEmDuas = false}) {
+  final passo = duasEmDuas ? 2 : 1;
+  if (dose <= 0) return 0;
+  return (dose / passo).round() * passo;
+}
+
+// ===================================================================
+// Firebase / Firestore helpers
+// ===================================================================
+
 final CollectionReference<Map<String, dynamic>> pacientesRef =
     FirebaseFirestore.instance.collection('pacientes');
 
@@ -346,7 +452,10 @@ Future<void> addFollowUpReading(
   await docRef.collection('acompanhamentos').add(reading.toMap());
 }
 
-//Home
+// ===================================================================
+// Home
+// ===================================================================
+
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
@@ -462,7 +571,7 @@ class HomePage extends StatelessWidget {
                       ),
                       const SizedBox(height: 10),
 
-                      // NOVO: botão para lista de pacientes
+                      // botão lista de pacientes
                       Center(
                         child: ConstrainedBox(
                           constraints:
@@ -533,7 +642,7 @@ class HomePage extends StatelessWidget {
   }
 }
 
-// ===== NOVA TELA: LISTA DE PACIENTES =====
+// ===== LISTA DE PACIENTES =====
 class PatientsListPage extends StatelessWidget {
   const PatientsListPage({super.key});
 
@@ -642,7 +751,10 @@ class PatientsListPage extends StatelessWidget {
   }
 }
 
+// ===================================================================
 // Formulário do paciente
+// ===================================================================
+
 class PatientFormPage extends StatefulWidget {
   const PatientFormPage({super.key});
 
@@ -973,7 +1085,10 @@ class _PatientFormPageState extends State<PatientFormPage> {
   }
 }
 
-// Resultado
+// ===================================================================
+// Resultado / Prescrição sugerida
+// ===================================================================
+
 class SuggestionPage extends StatelessWidget {
   final Patient patient;
   const SuggestionPage({super.key, required this.patient});
@@ -986,27 +1101,99 @@ class SuggestionPage extends StatelessWidget {
     b.writeln(
         'Cenário: ${patient.cenario} | Peso: ${patient.pesoKg.toStringAsFixed(1)} kg | Altura: ${patient.alturaCm.toStringAsFixed(0)} cm');
     b.writeln(
-        'Creatinina: ${patient.creatinina.toStringAsFixed(2)} mg/dL | Local: ${patient.local}\n');
+        'Creatinina: ${patient.creatinina.toStringAsFixed(2)} mg/dL | Local: ${patient.local}');
 
-    double? basal;
-    if (patient.cenario == 'Não crítico') {
-      basal = (patient.pesoKg * 0.2).clamp(0, 100);
-    }
-
-    b.writeln('1) Dieta: conforme avaliação da equipe (simulado).');
-    b.writeln(
-        '2) Monitorização: glicemias AC/HS; considerar 03:00 se necessário (simulado).');
-    if (basal != null) {
-      b.writeln(
-          '3) Basal: dose inicial sugerida (simulada): ${basal.toStringAsFixed(1)} UI SC à noite (0,2 UI/kg).');
+    final imc = calcularImc(patient.pesoKg, patient.alturaCm);
+    if (imc != null) {
+      b.writeln('IMC aproximado: ${imc.toStringAsFixed(1)} kg/m² (simulado).');
     } else {
-      b.writeln(
-          '3) Basal: definir conforme protocolo específico e avaliação clínica (simulado).');
+      b.writeln('IMC não calculado (dados incompletos) — simulado.');
     }
+    b.writeln('');
+
+    // Se não for cenário não crítico, mantém uma sugestão genérica.
+    if (patient.cenario != 'Não crítico' || patient.pesoKg <= 0) {
+      b.writeln('1) Dieta: conforme avaliação da equipe (simulado).');
+      b.writeln(
+          '2) Monitorização: glicemias conforme protocolo do serviço (simulado).');
+      b.writeln(
+          '3) Insulina basal/bôlus: definir conforme protocolo específico e quadro clínico (simulado).');
+      b.writeln(
+          '4) Correções: utilizar esquema de correção institucional (simulado).');
+      b.writeln(
+          '5) Reavaliar diariamente e ajustar conforme glicemias (simulado).');
+      return b.toString();
+    }
+
+    // ================= CÁLCULO DETALHADO PARA CENÁRIO NÃO CRÍTICO =================
+
+    final sensibilidade = inferirSensibilidade(imc);
+    String sensTexto;
+    switch (sensibilidade) {
+      case Sensibilidade.sensivel:
+        sensTexto = 'sensível';
+        break;
+      case Sensibilidade.usual:
+        sensTexto = 'habitual';
+        break;
+      case Sensibilidade.resistente:
+        sensTexto = 'resistente';
+        break;
+    }
+
+    final doses = calcularDtdBasalBolus(
+      pesoKg: patient.pesoKg,
+      sensibilidade: sensibilidade,
+    );
+
+    final basalNph = dividirNph3x(doses.doseBasalTotal);
+    final bolus = dividirBolusOral(doses.doseBolusTotal);
+
     b.writeln(
-        '4) Correções: considerar esquema de correção conforme protocolo local (simulado).');
+        'Sensibilidade estimada à insulina (didático, pelo IMC): $sensTexto.');
     b.writeln(
-        '5) Reavaliar diariamente e ajustar conforme glicemias (simulado).');
+        'Dose total diária aproximada (DTD): ${doses.dtd.toStringAsFixed(1)} UI/dia.');
+    b.writeln(
+        'Desta DTD, cerca de metade é basal (${doses.doseBasalTotal.toStringAsFixed(1)} UI/dia) e metade é bôlus/prandial (${doses.doseBolusTotal.toStringAsFixed(1)} UI/dia).');
+    b.writeln('');
+
+    b.writeln(
+        'Sugestão didática para cenário NÃO CRÍTICO em dieta oral (esquema basal/bôlus):\n');
+
+    // 1) Dieta
+    b.writeln(
+        '1) Dieta: conforme avaliação da equipe multiprofissional (não calculada pelo app).');
+
+    // 2) Monitorização
+    b.writeln(
+        '2) Monitorização: glicemia capilar AC/HS; considerar 03:00 se hipoglicemias noturnas ou dúvida (simulado).');
+
+    // 3) Basal – NPH 3x/dia com arredondamento
+    final nphManha = arredondarDose(basalNph.manha);
+    final nphAlmoco = arredondarDose(basalNph.almoco);
+    final nphNoite = arredondarDose(basalNph.noite);
+
+    b.writeln(
+        '3) Insulina basal (NPH SC): ${nphManha} U às 06:00, ${nphAlmoco} U às 11:00 e ${nphNoite} U às 22:00 (doses arredondadas, uso didático).');
+
+    // 4) Bôlus – rápida antes das refeições
+    final rapCafe = arredondarDose(bolus.cafe);
+    final rapAlmoco = arredondarDose(bolus.almoco);
+    final rapJantar = arredondarDose(bolus.jantar);
+
+    b.writeln(
+        '4) Insulina rápida/prandial SC: ${rapCafe} U antes do café, ${rapAlmoco} U antes do almoço e ${rapJantar} U antes do jantar, ajustando conforme tabela de correção institucional (não implementada neste protótipo).');
+
+    // 5) Correções
+    b.writeln(
+        '5) Correções: utilizar esquema de correção para hiperglicemias conforme protocolo/local (tabela de correção não automatizada neste protótipo).');
+
+    // 6) Reavaliação
+    b.writeln(
+        '6) Reavaliar diariamente, ajustando doses de basal e prandial de acordo com glicemias, alimentação e quadro clínico (simulado).');
+
+    b.writeln(
+        '\nEste cálculo é apenas ilustrativo e NÃO deve ser usado para decisões clínicas reais.');
 
     return b.toString();
   }
@@ -1096,6 +1283,11 @@ class SuggestionPage extends StatelessWidget {
     );
   }
 }
+
+// ===================================================================
+// Acompanhamento diário
+// ===================================================================
+
 class FollowUpPage extends StatefulWidget {
   final Patient patient;
   const FollowUpPage({super.key, required this.patient});
@@ -1317,6 +1509,10 @@ class _FollowUpPageState extends State<FollowUpPage> {
     );
   }
 }
+
+// ===================================================================
+// Alta
+// ===================================================================
 
 class DischargePage extends StatelessWidget {
   final Patient patient;
